@@ -23,6 +23,8 @@ def get_eft_entries():
         LEFT JOIN mdb.memberships AS m
           ON s.agreement_payment_plan = m.membership_type
         WHERE s.sales_person <> ''
+          -- only include New Business EFTs
+          AND s.profit_center LIKE 'New Business%'
     """).fetchall()
     conn.close()
     return [dict(r) for r in rows]

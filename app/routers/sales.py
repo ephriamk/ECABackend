@@ -173,12 +173,13 @@ def get_promo_totals():
 @router.get("/abc-sections", response_model=Dict[str, float])
 def get_abc_sections():
     """
-    Return MTD totals for profit_centers A, B, and C.
+    Return MTD totals for profit_centers A, B, and C—and their combined sum.
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     first_of_month = datetime.date.today().replace(day=1).isoformat()
+
     results: Dict[str, float] = {}
     for section in ["A", "B", "C"]:
         cur.execute(
@@ -189,5 +190,13 @@ def get_abc_sections():
         )
         val = cur.fetchone()["total_mtd"] or 0.0
         results[f"total_{section}_mtd"] = float(val)
+
+    # Add combined A+B+C total
+    results["total_abc_mtd"] = (
+        results["total_A_mtd"]
+      + results["total_B_mtd"]
+      + results["total_C_mtd"]
+    )
+
     conn.close()
     return results
