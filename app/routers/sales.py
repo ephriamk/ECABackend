@@ -85,12 +85,30 @@ def load_raw(csv_path: str = Body(..., embed=True)):
 
 @router.get("/nb-cash-entries")
 def nb_cash_entries():
+    """
+    Return all sales for NB Cash tracking:
+    - All 'New Business' profit center entries
+    - 'Promotion' profit center entries where main_item starts with 'UPG' or 'Guest Fee'
+    Frontend will separate Promotion entries <= $20 into non-commissioned passes
+    """
     return query_db("""
-        SELECT sale_id, member_name, membership_type, total_amount,
-               commission_employees, sales_person, latest_payment_date
+        SELECT 
+            sale_id, 
+            member_name, 
+            total_amount,
+            profit_center,
+            main_item,
+            commission_employees, 
+            sales_person, 
+            latest_payment_date
         FROM sales
         WHERE profit_center = 'New Business'
+           OR (profit_center = 'Promotion' 
+               AND (main_item LIKE 'UPG%' OR main_item LIKE 'Guest Fee%'))
+        ORDER BY latest_payment_date DESC, sale_id DESC
     """)
+
+
 
 @router.get("/all")
 def all_sales():
@@ -200,3 +218,66 @@ def get_abc_sections():
 
     conn.close()
     return results
+
+# Debug endpoint to check what's in the database
+@router.get("/debug/profit-centers")
+def debug_profit_centers():
+    """Debug endpoint to see what profit centers exist in your data"""
+    return query_db("""
+        SELECT 
+            profit_center, 
+            COUNT(*) as count,
+            SUM(total_amount) as total_amount
+        FROM sales 
+        WHERE profit_center IS NOT NULL 
+        GROUP BY profit_center 
+        ORDER BY count DESC
+    """)
+
+@router.get("/debug/promotion-main-items")
+def debug_promotion_main_items():
+    """Debug endpoint to see what main_item values exist for Promotion profit center"""
+    return query_db("""
+        SELECT 
+            main_item,
+            COUNT(*) as count,
+            SUM(total_amount) as total_amount,
+            AVG(total_amount) as avg_amount
+        FROM sales 
+        WHERE profit_center = 'Promotion'
+          AND main_item IS NOT NULL 
+        GROUP BY main_item 
+        ORDER BY count DESC
+    """)
+
+@router.get("/debug/payment-methods")
+def debug_payment_methods():
+    """Debug endpoint to see what payment methods exist"""
+    return query_db("""
+        SELECT 
+            payment_method, 
+            COUNT(*) as count
+        FROM sales 
+        WHERE payment_method IS NOT NULL 
+        GROUP BY payment_method 
+        ORDER BY count DESC
+    """)
+
+@router.get("/debug/recent-sales")
+def debug_recent_sales():
+    """Debug endpoint to see recent sales with all relevant fields"""
+    return query_db("""
+        SELECT 
+            sale_id,
+            member_name,
+            profit_center,
+            main_item,
+            payment_method,
+            total_amount,
+            commission_employees,
+            sales_person,
+            latest_payment_date
+        FROM sales 
+        ORDER BY latest_payment_date DESC, sale_id DESC
+        LIMIT 20
+    """)
