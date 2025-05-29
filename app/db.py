@@ -102,3 +102,4 @@ def execute_first_workouts(query: str, params: tuple = ()) -> None:
     cur.execute(query, params)
     conn.commit()
     conn.close()
+    
