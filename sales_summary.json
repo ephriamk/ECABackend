@@ -1,7 +1,7 @@
 {
   "total_sales_in_csv": 444,
   "total_transactions_in_csv": 719,
-  "new_sales_added": 444,
-  "new_transactions_added": 719,
-  "existing_sales_preserved": 0
+  "new_sales_added": 0,
+  "new_transactions_added": 0,
+  "existing_sales_preserved": 444
 }
