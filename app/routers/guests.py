@@ -101,3 +101,22 @@ def get_guests_by_source(day: str, source: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/all")
+def get_all_guests():
+    """Get all guest entries"""
+    try:
+        if not os.path.exists(GUESTS_DB_PATH):
+            raise HTTPException(status_code=404, detail="Guests database not found.")
+        
+        conn = sqlite3.connect(GUESTS_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM guests ORDER BY created_at DESC")
+        guests = [dict(row) for row in cursor.fetchall()]
+        
+        conn.close()
+        return guests
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
