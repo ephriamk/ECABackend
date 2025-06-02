@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import employees, sales, eft, memberships, guests, kpi, first_workouts, tools, eft_calculations
+from app.routers import employees, sales, eft, memberships, guests, kpi, first_workouts, tools, eft_calculations, thirtyday_reprograms
 
 
 app = FastAPI()
@@ -30,3 +30,4 @@ app.include_router(kpi.router)     # ← make sure KPI router is included
 app.include_router(first_workouts.router)
 app.include_router(tools.router)
 app.include_router(eft_calculations.router)
+app.include_router(thirtyday_reprograms.router)

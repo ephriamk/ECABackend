@@ -12,6 +12,7 @@ import pandas as pd
 import sqlite3
 import logging
 import json
+import hashlib
 from typing import Dict, List, Any
 
 # Configure logging
@@ -69,13 +70,28 @@ def process_sales_data(
         for (agreement, profit_center), group in df.groupby(['Agreement #', 'Profit Center']):
             if not agreement or not profit_center:
                 continue
-                
             # Check if this is a prospect agreement (generic agreement number)
             if agreement == "40059PROSP" or "PROSP" in str(agreement).upper():
-                # For prospect entries, create individual sales records per transaction
-                for _, row in group.iterrows():
-                    unique_key = f"{agreement}_{profit_center}_{row['row_index']}"
-                    grouped_sales[unique_key] = [row.to_dict()]
+                # For prospect entries, group PT profit centers by agreement, profit_center, payment_date, and item
+                PT_CENTERS = [
+                    'PT Postdate - New',
+                    'PT Postdate - Renew',
+                    'Personal Training - NEW',
+                    'Personal Training - RENEW',
+                ]
+                if profit_center in PT_CENTERS:
+                    # Group all PT for this prospect, date, and item
+                    for (payment_date, item), pt_group in group.groupby(['Payment Date', 'Item']):
+                        unique_string = f"{agreement}_{profit_center}_{payment_date}_{item}"
+                        unique_hash = hashlib.md5(unique_string.encode('utf-8')).hexdigest()[:8]
+                        unique_key = f"{agreement}_{profit_center}_{unique_hash}"
+                        grouped_sales[unique_key] = pt_group.to_dict('records')
+                else:
+                    for _, row in group.iterrows():
+                        unique_string = f"{agreement}_{profit_center}_{row['Payment Date']}_{row['Item']}_{row['Amount']}"
+                        unique_hash = hashlib.md5(unique_string.encode('utf-8')).hexdigest()[:8]
+                        unique_key = f"{agreement}_{profit_center}_{unique_hash}"
+                        grouped_sales[unique_key] = [row.to_dict()]
             else:
                 # For regular agreements, group normally
                 key = f"{agreement}_{profit_center}"
