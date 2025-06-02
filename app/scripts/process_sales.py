@@ -152,8 +152,15 @@ def process_sales_data(
                 parts = sale_id.split('_')
                 agreement_number = parts[0]
                 profit_center = '_'.join(parts[1:-1]) if len(parts) > 2 and "PROSP" in agreement_number else '_'.join(parts[1:])
-                
-                total_amount = sum(float(t.get('Amount', 0) or 0) for t in transactions)
+                # Deduplicate by Item: only sum the first occurrence of each unique Item
+                seen_items = set()
+                total_amount = 0
+                for t in transactions:
+                    item = t.get('Item', '')
+                    amount = float(t.get('Amount', 0) or 0)
+                    if item not in seen_items:
+                        total_amount += amount
+                        seen_items.add(item)
                 transaction_count_for_sale = len(transactions)
                 first = transactions[0]
                 latest_date = max(t.get('Payment Date', '') for t in transactions)

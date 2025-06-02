@@ -36,7 +36,8 @@ def get_eft_entries():
             s.sales_person,
             s.latest_payment_date,
             s.agreement_payment_plan,
-            s.main_item
+            s.main_item,
+            s.total_amount
         FROM sales AS s
     """).fetchall()
     memberships = conn.execute("SELECT membership_type, price FROM mdb.memberships").fetchall()
@@ -59,7 +60,7 @@ def get_eft_entries():
         if pc == 'New Business':
             price = get_price(plan)
         elif pc == 'Promotion' and any(main_item.lower() == upg.lower() for upg in UPGRADE_ITEMS):
-            price = get_price(plan) / 2 if get_price(plan) else 0.0
+            price = s['total_amount'] / 2 if s['total_amount'] else 0.0
         else:
             continue
         results.append({
