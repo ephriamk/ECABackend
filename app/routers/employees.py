@@ -1,3 +1,4 @@
+# app/routers/employees.py
 from fastapi import APIRouter, Body, HTTPException
 from typing import List, Dict, Any
 from app.db import query_employees, execute_employees
@@ -7,7 +8,7 @@ router = APIRouter(prefix="/api/employees", tags=["employees"])
 @router.get("", response_model=List[Dict[str, Any]])
 def list_sales_employees():
     return query_employees('''
-        SELECT "Name" AS name
+        SELECT "Name" AS name, "Quota" AS quota
         FROM employees
         WHERE "Position" LIKE "Sales%"
         ORDER BY
@@ -28,21 +29,44 @@ def list_all_employees():
 
 @router.post("", status_code=201)
 def add_employee(data: Dict[str, Any] = Body(...)):
-    fields = ['"Active"', '"Barcode"', '"Name"', '"Position"', '"Profit Center"', '"hired"']
-    placeholders = ", ".join("?" for _ in fields)
-    values = [
-        data.get("active", ""), data.get("barcode", ""),
-        data.get("name", ""),   data.get("position", ""),
-        data.get("profitCenter",""), data.get("hired","")
-    ]
-    execute_employees(f'INSERT INTO employees ({", ".join(fields)}) VALUES ({placeholders})', tuple(values))
+    # Check if Quota column exists first
+    try:
+        # Try with Quota
+        fields = ['"Active"', '"Barcode"', '"Name"', '"Position"', '"Profit Center"', '"hired"', '"Quota"']
+        placeholders = ", ".join("?" for _ in fields)
+        values = [
+            data.get("active", ""), 
+            data.get("barcode", ""),
+            data.get("name", ""),   
+            data.get("position", ""),
+            data.get("profitCenter",""), 
+            data.get("hired",""),
+            data.get("quota", 0)  # Default quota to 0
+        ]
+        execute_employees(f'INSERT INTO employees ({", ".join(fields)}) VALUES ({placeholders})', tuple(values))
+    except Exception as e:
+        if "no column named Quota" in str(e):
+            # Fallback without Quota
+            fields = ['"Active"', '"Barcode"', '"Name"', '"Position"', '"Profit Center"', '"hired"']
+            placeholders = ", ".join("?" for _ in fields)
+            values = [
+                data.get("active", ""), 
+                data.get("barcode", ""),
+                data.get("name", ""),   
+                data.get("position", ""),
+                data.get("profitCenter",""), 
+                data.get("hired","")
+            ]
+            execute_employees(f'INSERT INTO employees ({", ".join(fields)}) VALUES ({placeholders})', tuple(values))
+        else:
+            raise e
     return {"success": True}
 
 @router.put("/{name}")
 def update_employee(name: str, data: Dict[str, Any] = Body(...)):
-    fields = ["Active","Barcode","Name","Position","Profit Center","hired"]
+    fields = ["Active","Barcode","Name","Position","Profit Center","hired","Quota"]
     updates, vals = [], []
-    for f,k in zip(fields, ["active","barcode","name","position","profitCenter","hired"]):
+    for f,k in zip(fields, ["active","barcode","name","position","profitCenter","hired","quota"]):
         if k in data:
             updates.append(f'"{f}" = ?')
             vals.append(data[k])

@@ -1,10 +1,16 @@
 # app/routers/sales.py
 
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File
 from typing import List, Dict, Any
 import sqlite3
 import datetime
 from app.db import DB_PATH, query_db, execute_db
+from fastapi.responses import StreamingResponse, JSONResponse
+import io
+import csv
+import pandas as pd
+import os
+import shutil
 
 router = APIRouter(prefix="/api/sales", tags=["sales"])
 
@@ -108,8 +114,6 @@ def nb_cash_entries():
         ORDER BY latest_payment_date DESC, sale_id DESC
     """)
 
-
-
 @router.get("/all")
 def all_sales():
     return query_db("SELECT * FROM sales ORDER BY sale_id")
@@ -174,7 +178,11 @@ def get_promo_totals():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     mtd = cur.execute(
-        "SELECT SUM(total_amount) AS mtd_total FROM sales WHERE profit_center='Promotion'"
+        """
+        SELECT SUM(total_amount) AS mtd_total FROM sales
+        WHERE profit_center='Promotion'
+          AND (main_item IS NULL OR main_item NOT LIKE '%Downgrade%')
+        """
     ).fetchone()["mtd_total"] or 0.0
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
     yesterday_total = cur.execute(
@@ -183,7 +191,9 @@ def get_promo_totals():
         FROM sales
         WHERE profit_center='Promotion'
           AND latest_payment_date = ?
-        """, (yesterday,)
+          AND (main_item IS NULL OR main_item NOT LIKE '%Downgrade%')
+        """,
+        (yesterday,)
     ).fetchone()["yesterday_total"] or 0.0
     conn.close()
     return {"mtd": round(mtd,2), "promo_yesterday": round(yesterday_total,2)}
@@ -281,3 +291,85 @@ def debug_recent_sales():
         ORDER BY latest_payment_date DESC, sale_id DESC
         LIMIT 20
     """)
+
+@router.get("/export-csv")
+def export_sales_csv():
+    """
+    Export the entire sales table as a CSV file.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM sales")
+    rows = cur.fetchall()
+    headers = [desc[0] for desc in cur.description]
+    conn.close()
+
+    def iter_csv():
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        yield output.getvalue()
+        output.seek(0)
+        output.truncate(0)
+        for row in rows:
+            writer.writerow(row)
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+    return StreamingResponse(iter_csv(), media_type="text/csv", headers={
+        "Content-Disposition": "attachment; filename=sales_export.csv"
+    })
+
+@router.post("/import-csv")
+def import_sales_csv(file: UploadFile = File(...)):
+    """
+    Replace the sales table with the uploaded CSV file. Backs up the DB file before replacing.
+    """
+    try:
+        # Backup DB file first
+        db_path = DB_PATH
+        backup_path = db_path.replace('.db', '_backup.db')
+        if os.path.exists(db_path):
+            shutil.copy2(db_path, backup_path)
+        # Read uploaded file into DataFrame
+        df = pd.read_csv(file.file)
+        # Validate required columns
+        required_cols = {"sale_id", "agreement_number", "member_name", "sales_person", "profit_center", "main_item", "transaction_count", "total_amount", "commission_employees", "latest_payment_date"}
+        if not required_cols.issubset(df.columns):
+            return JSONResponse(status_code=400, content={"error": f"CSV missing required columns: {required_cols - set(df.columns)}"})
+        # Replace table
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("DELETE FROM sales")
+        conn.commit()
+        df.to_sql("sales", conn, if_exists="append", index=False)
+        conn.close()
+        return {"success": True, "rows": len(df), "undo_available": True}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.post("/undo-import")
+def undo_import():
+    """
+    Restore the last backup of the sales DB (undo last import).
+    """
+    db_path = DB_PATH
+    backup_path = db_path.replace('.db', '_backup.db')
+    if not os.path.exists(backup_path):
+        return JSONResponse(status_code=404, content={"error": "No backup available to restore."})
+    try:
+        # Replace the DB file with the backup
+        shutil.copy2(backup_path, db_path)
+        return {"success": True}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.get("/undo-available")
+def undo_available():
+    """
+    Returns {available: true/false} if a backup DB exists for undo.
+    """
+    db_path = DB_PATH
+    backup_path = db_path.replace('.db', '_backup.db')
+    return {"available": os.path.exists(backup_path)}
