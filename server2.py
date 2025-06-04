@@ -118,6 +118,23 @@ def get_all_employees():
 def get_all_employees_full():
     return query_employees_db('SELECT * FROM employees ORDER BY "Name"')
 
+@app.get("/api/employees/trainers", response_model=List[Dict[str, Any]])
+def get_trainers():
+    return query_employees_db('''
+        SELECT "Name" AS name, "Position" AS position
+        FROM employees
+        WHERE "Position" LIKE "%Trainer%" 
+           OR "Position" LIKE "%Fitness Director%"
+        ORDER BY
+            CASE 
+                WHEN "Position" LIKE "%Fitness Director" AND "Position" NOT LIKE "%Weekend%" AND "Position" NOT LIKE "%Assistant%" THEN 1
+                WHEN "Position" LIKE "%Weekend Fitness Director%" THEN 2
+                WHEN "Position" LIKE "%Assistant Fitness Director%" THEN 3
+                ELSE 4
+            END,
+            "Name"
+    ''')
+
 @app.post("/api/employees")
 def add_employee(data: Dict[str, Any] = Body(...)):
     fields = ['"Active"', '"Barcode"', '"Name"', '"Position"', '"Profit Center"', '"hired"']
