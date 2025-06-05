@@ -1,6 +1,6 @@
 # app/routers/sales.py
 
-from fastapi import APIRouter, HTTPException, Body, UploadFile, File
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form
 from typing import List, Dict, Any
 import sqlite3
 import datetime
@@ -13,6 +13,13 @@ import os
 import shutil
 
 router = APIRouter(prefix="/api/sales", tags=["sales"])
+
+ALLOWED_CSVS = {
+    "all_sales_report.csv": "backend/all_sales_report.csv",
+    "employees.csv": "backend/employees.csv",
+    "guests.csv": "backend/guests.csv",
+    "events.csv": "backend/app/scripts/events.csv",
+}
 
 @router.get("/stats")
 def get_summary():
@@ -373,3 +380,26 @@ def undo_available():
     db_path = DB_PATH
     backup_path = db_path.replace('.db', '_backup.db')
     return {"available": os.path.exists(backup_path)}
+
+@router.post("/upload-csv")
+def upload_csv(file: UploadFile = File(...), filename: str = Form(...)):
+    if filename not in ALLOWED_CSVS:
+        return JSONResponse(status_code=400, content={"error": "Invalid filename"})
+    dest_path = ALLOWED_CSVS[filename]
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)  # Ensure directory exists
+    try:
+        with open(dest_path, "wb") as f:
+            f.write(file.file.read())
+        return {"success": True, "filename": filename}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.get("/check-csv")
+def check_csv(filename: str):
+    if filename not in ALLOWED_CSVS:
+        return JSONResponse(status_code=400, content={"error": "Invalid filename"})
+    dest_path = ALLOWED_CSVS[filename]
+    if os.path.exists(dest_path):
+        return {"exists": True}
+    else:
+        return JSONResponse(status_code=404, content={"exists": False})

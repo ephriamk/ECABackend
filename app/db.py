@@ -7,12 +7,13 @@ from datetime import datetime
 from fastapi import HTTPException
 from typing import List, Dict, Any
 
-DB_PATH = "sales_data.db"
-EMPLOYEES_DB_PATH = "employees.db"
-KPI_DB_PATH = "clubKPI.db"
-MEMBERSHIPS_DB_PATH = "memberships.db"
-GUESTS_DB_PATH = "guests.db"
-FIRST_WORKOUTS_DB_PATH = "firstWorkouts.db"
+# Fix database paths to point to the correct location in backend/
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "sales_data.db")
+EMPLOYEES_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "employees.db")
+KPI_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "clubKPI.db")
+MEMBERSHIPS_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "memberships.db")
+GUESTS_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "guests.db")
+FIRST_WORKOUTS_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "firstWorkouts.db")
 
 # Directory where backups will be stored
 BACKUP_DIR = "db_backups"
