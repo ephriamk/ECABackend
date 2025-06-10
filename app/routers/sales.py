@@ -131,7 +131,8 @@ def update_sale(sale_id: str, data: Dict[str, Any] = Body(...)):
         "agreement_number","profit_center","total_amount","transaction_count",
         "main_item","member_name","membership_type","agreement_type",
         "agreement_payment_plan","payment_method","latest_payment_date",
-        "commission_employees","sales_person"
+        "commission_employees","sales_person",
+        "manual_override"  # Allow manual_override to be updated
     }
     updates, vals = [], []
     for k, v in data.items():
