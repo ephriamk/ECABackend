@@ -38,7 +38,21 @@ def create_kpi_database():
         ('closing_percentage', 70),
         ('first_workout_show_percentage', 70),
         ('five_star_review_percentage', 80),
-        ('average_eft', 50)
+        ('average_eft', 50),
+        ('pt_quota_new_fd', 25000),
+        ('pt_quota_renew_fd', 30000),
+        ('pt_quota_new_wfd', 20000),
+        ('pt_quota_renew_wfd', 25000),
+        ('nbpromo_quota_gm', 50000),
+        ('nbpromo_quota_agm', 20000),
+        ('fept_quota_gm', 15000),
+        ('fept_quota_agm', 5347),
+        ('neweft_quota_gm', 12000),
+        ('neweft_quota_agm', 4277),
+        ('collections_quota', 5000),
+        ('pif_renewals_quota', 3000),
+        ('abc_dues_quota', 129426),
+        ('coordinator_bonus_quota', 8000),
     ]
     
     for metric, goal in default_kpis:

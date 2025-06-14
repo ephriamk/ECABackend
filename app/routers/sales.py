@@ -404,3 +404,64 @@ def check_csv(filename: str):
         return {"exists": True}
     else:
         return JSONResponse(status_code=404, content={"exists": False})
+
+@router.get("/collections-dues")
+def get_collections_dues():
+    """
+    Return sum of total_amount for all sales with profit_center containing 'POS Dues' (case-insensitive)
+    for yesterday (today) and month-to-date (mtd).
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    first_of_month = datetime.date.today().replace(day=1).isoformat()
+    # Case-insensitive, trimmed match for 'POS Dues'
+    mtd = cur.execute(
+        """
+        SELECT SUM(total_amount) AS mtd_total FROM sales
+        WHERE LOWER(TRIM(profit_center)) LIKE '%pos dues%'
+          AND latest_payment_date >= ?
+        """,
+        (first_of_month,)
+    ).fetchone()["mtd_total"] or 0.0
+    today = cur.execute(
+        """
+        SELECT SUM(total_amount) AS today_total FROM sales
+        WHERE LOWER(TRIM(profit_center)) LIKE '%pos dues%'
+          AND latest_payment_date = ?
+        """,
+        (yesterday,)
+    ).fetchone()["today_total"] or 0.0
+    conn.close()
+    return {"today": round(today, 2), "mtd": round(mtd, 2)}
+
+@router.get("/pif-renewals-dues")
+def get_pif_renewals_dues():
+    """
+    Return sum of total_amount for all sales with profit_center = 'PIF Renewals'
+    for yesterday (today) and month-to-date (mtd).
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    first_of_month = datetime.date.today().replace(day=1).isoformat()
+    mtd = cur.execute(
+        """
+        SELECT SUM(total_amount) AS mtd_total FROM sales
+        WHERE profit_center = 'PIF Renewals'
+          AND latest_payment_date >= ?
+        """,
+        (first_of_month,)
+    ).fetchone()["mtd_total"] or 0.0
+    today = cur.execute(
+        """
+        SELECT SUM(total_amount) AS today_total FROM sales
+        WHERE profit_center = 'PIF Renewals'
+          AND latest_payment_date = ?
+        """,
+        (yesterday,)
+    ).fetchone()["today_total"] or 0.0
+    conn.close()
+    return {"today": round(today, 2), "mtd": round(mtd, 2)}

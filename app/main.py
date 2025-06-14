@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import employees, sales, eft, memberships, guests, kpi, first_workouts, tools, eft_calculations, thirtyday_reprograms, events, upload
 from app.routers import attrition
+from app.routers import coachees_table
 
 
 app = FastAPI()
@@ -35,3 +36,4 @@ app.include_router(thirtyday_reprograms.router)
 app.include_router(events.router)
 app.include_router(upload.router)
 app.include_router(attrition.router)
+app.include_router(coachees_table.router)

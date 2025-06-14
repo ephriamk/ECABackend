@@ -53,6 +53,14 @@ def process_sales_data(
         logger.info(f"📥 Loading CSV data from {csv_path}")
         df = pd.read_csv(csv_path)
 
+        # Handle both 'Agreement #' and 'agreement_number' columns
+        if 'Agreement #' not in df.columns and 'agreement_number' in df.columns:
+            df['Agreement #'] = df['agreement_number']
+        elif 'Agreement #' not in df.columns and 'agreement_number' not in df.columns:
+            result['error'] = "CSV must contain either 'Agreement #' or 'agreement_number' column."
+            return result
+        # If both exist, prefer 'Agreement #' as is
+
         df['Agreement #'] = df['Agreement #'].astype(str)
         df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
         df['Next Due Amount'] = pd.to_numeric(df['Next Due Amount'], errors='coerce')

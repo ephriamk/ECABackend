@@ -93,3 +93,24 @@ def bulk_update_kpi_goals(data: List[Dict[str, Any]] = Body(...)):
         return {"success": True, "updated_count": len(data)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/pt-quotas")
+def get_pt_quotas():
+    try:
+        quota_keys = [
+            "nbpromo_quota_gm", "nbpromo_quota_agm",
+            "fept_quota_gm", "fept_quota_agm",
+            "pt_quota_new_fd", "pt_quota_renew_fd",
+            "pt_quota_new_wfd", "pt_quota_renew_wfd",
+            "neweft_quota_gm", "neweft_quota_agm",
+            "collections_quota", "pif_renewals_quota",
+            "abc_dues_quota",
+            "coordinator_bonus_quota"
+        ]
+        results = query_kpi(
+            f"SELECT metric_name, goal_value FROM kpi_goals WHERE metric_name IN ({','.join(['?']*len(quota_keys))})",
+            tuple(quota_keys)
+        )
+        return {row["metric_name"]: row["goal_value"] for row in results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
