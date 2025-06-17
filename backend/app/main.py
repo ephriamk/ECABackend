@@ -7,6 +7,7 @@ from app.routers import coachees_table
 from app.routers import members
 from app.routers import api_events
 from app.routers import member_tracker
+from app.routers import transactions_api
 
 
 app = FastAPI()
@@ -43,3 +44,4 @@ app.include_router(coachees_table.router)
 app.include_router(members.router)
 app.include_router(api_events.router)
 app.include_router(member_tracker.router)
+app.include_router(transactions_api.router)
